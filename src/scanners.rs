@@ -1125,14 +1125,20 @@ pub(crate) fn scan_html_block_inner(
 }
 
 /// Returns (next_byte_offset, uri, type)
-pub(crate) fn scan_autolink(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>, LinkType)> {
+pub(crate) fn scan_autolink(
+    text: &str,
+    start_ix: usize,
+) -> Option<(usize, CowStr<'_>, CowStr<'_>, LinkType)> {
     scan_uri(text, start_ix)
-        .map(|(bytes, uri)| (bytes, uri, LinkType::Autolink))
-        .or_else(|| scan_email(text, start_ix).map(|(bytes, uri)| (bytes, uri, LinkType::Email)))
+        .map(|(bytes, uri, title)| (bytes, uri, title, LinkType::Autolink))
+        .or_else(|| {
+            scan_email(text, start_ix)
+                .map(|(bytes, uri, title)| (bytes, uri, title, LinkType::Email))
+        })
 }
 
 /// Returns (next_byte_offset, uri)
-fn scan_uri(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>)> {
+fn scan_uri(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>, CowStr<'_>)> {
     let bytes = &text.as_bytes()[start_ix..];
 
     // scheme's first byte must be an ascii letter
@@ -1161,7 +1167,13 @@ fn scan_uri(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>)> {
 
     while i < bytes.len() {
         match bytes[i] {
-            b'>' => return Some((start_ix + i + 1, text[start_ix..(start_ix + i)].into())),
+            b'>' => {
+                return Some((
+                    start_ix + i + 1,
+                    text[start_ix..(start_ix + i)].into(),
+                    "".into(),
+                ))
+            }
             b'\0'..=b' ' | b'<' => return None,
             _ => (),
         }
@@ -1172,7 +1184,7 @@ fn scan_uri(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>)> {
 }
 
 /// Returns (next_byte_offset, email)
-fn scan_email(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>)> {
+fn scan_email(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>, CowStr<'_>)> {
     // using a regex library would be convenient, but doing it by hand is not too bad
     let bytes = &text.as_bytes()[start_ix..];
     let mut i = 0;
@@ -1220,7 +1232,11 @@ fn scan_email(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>)> {
         return None;
     }
 
-    Some((start_ix + i + 1, text[start_ix..(start_ix + i)].into()))
+    Some((
+        start_ix + i + 1,
+        text[start_ix..(start_ix + i)].into(),
+        "".into(),
+    ))
 }
 
 /// Scan comment, declaration, or CDATA section, with initial "<!" already consumed.

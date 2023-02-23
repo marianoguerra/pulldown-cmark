@@ -236,14 +236,14 @@ impl<'input, 'callback> Parser<'input, 'callback> {
                         None
                     };
 
-                    if let Some((ix, uri, link_type)) = autolink {
+                    if let Some((ix, uri, title, link_type)) = autolink {
                         let node = scan_nodes_to_ix(&self.tree, next, ix);
                         let text_node = self.tree.create_node(Item {
                             start: self.tree[cur_ix].item.start + 1,
                             end: ix - 1,
                             body: ItemBody::Text,
                         });
-                        let link_ix = self.allocs.allocate_link(link_type, uri, "".into());
+                        let link_ix = self.allocs.allocate_link(link_type, uri, title);
                         self.tree[cur_ix].item.body = ItemBody::Link(link_ix);
                         self.tree[cur_ix].item.end = ix;
                         self.tree[cur_ix].next = node;
