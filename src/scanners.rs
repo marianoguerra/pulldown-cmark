@@ -1165,16 +1165,40 @@ fn scan_uri(text: &str, start_ix: usize) -> Option<(usize, CowStr<'_>, CowStr<'_
         return None;
     }
 
+    let mut title_start = 0;
     while i < bytes.len() {
-        match bytes[i] {
+        let c = bytes[i];
+        match c {
             b'>' => {
-                return Some((
-                    start_ix + i + 1,
-                    text[start_ix..(start_ix + i)].into(),
-                    "".into(),
-                ))
+                if title_start == 0 {
+                    return Some((
+                        start_ix + i + 1,
+                        text[start_ix..(start_ix + i)].into(),
+                        "".into(),
+                    ));
+                } else {
+                    return Some((
+                        start_ix + i + 1,
+                        text[start_ix..(start_ix + title_start)].into(),
+                        text[(start_ix + title_start + 1)..(start_ix + i)].into(),
+                    ));
+                }
             }
-            b'\0'..=b' ' | b'<' => return None,
+            b'|' => {
+                title_start = i;
+                ()
+            }
+            b'\0'..=b' ' | b'<' => {
+                if title_start > 0
+                    && (is_ascii_letterdigitdash(c)
+                        || is_ascii_whitespace(c)
+                        || is_ascii_punctuation(c))
+                {
+                    ()
+                } else {
+                    return None;
+                }
+            }
             _ => (),
         }
         i += 1;

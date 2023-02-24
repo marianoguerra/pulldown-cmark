@@ -12,6 +12,12 @@ pub fn test_markdown_html(input: &str, output: &str, slack_dialect: bool) {
     }
 
     let p = Parser::new_ext(input, opts);
+
+    for event in p {
+        println!("{event:?}");
+    }
+
+    let p = Parser::new_ext(input, opts);
     pulldown_cmark::html::push_html(&mut s, p);
 
     assert_eq!(normalize_html(output), normalize_html(&s));
@@ -40,4 +46,28 @@ fn underline_with_option_is_emphasis() {
 
     test_markdown_html(original, expected, true);
     test_markdown_html(original, expected, false);
+}
+
+#[test]
+fn autolink_no_label() {
+    let original = "<http://example.com>";
+    let expected = r###"<p><a href="http://example.com">http://example.com</a></p>"###;
+
+    test_markdown_html(original, expected, true);
+    test_markdown_html(original, expected, false);
+}
+
+fn test_title_link(url: &str, title: &str) {
+    let original = format!("<{url}|{title}>");
+    let expected = format!("<p><a href=\"{url}\" title=\"{title}\">{url}|{title}</a></p>");
+
+    test_markdown_html(&original, &expected, true);
+}
+
+#[test]
+fn autolink_with_label() {
+    test_title_link("http://example.com", "The Example");
+    test_title_link("mailto:bob@example.com", "The Example");
+    test_title_link("http://example.com", "ab \t -123");
+    test_title_link("http://example.com", "ab \t 123!?.;,#~´`'asd'");
 }
